@@ -33,45 +33,52 @@ class SoftmaxClassifier(nn.Module):
 
     def forward(self, x):
         logits = self.linear(x)
-        my_probabilities = self.softmax(logits)  # Apply softmax to logits
-        return my_probabilities
+        # my_probabilities = self.softmax(logits)  # Apply softmax to logits
+        return logits
 
 
 # end of defines and classes
 
 # constants
 num_of_classes = 10
-num_epochs = 10
-n = 500
+num_epochs = 10000
+train_split = 0.8
 # end of constants
 
 # הבאת המידע מאקסל
-distances_3d = pd.read_csv('data/3d_distances.csv', nrows=n, skip_blank_lines=True)
+distances_3d = pd.read_csv('data/3d_distances.csv', skip_blank_lines=True)
 distances_3d = distances_3d.drop('pose_id', axis=1)
-labels = pd.read_csv('data/labels.csv', nrows=n)
+labels = pd.read_csv('data/labels.csv', skip_blank_lines=True)
 labels = labels.drop('pose_id', axis=1)
-labels_indexed = li.create_label_tensor(num_of_classes, labels, 'pose')
+labels_tensor = li.create_label_tensor(num_of_classes, labels, 'pose')
 # labels_indexed = li.convert_df_labels(labels, 'pose')
-distances_3d_t = df_to_tensor(distances_3d)
+dis3d_tensor = df_to_tensor(distances_3d)
+dataset = torch.utils.data.TensorDataset(dis3d_tensor, labels_tensor)
 # labels_t = df_to_tensor(labels_indexed)
 
 num_of_features = distances_3d.columns.size
 
-# יצירת משקלים ובאייס(bias)
-W = torch.zeros((num_of_features, 1), requires_grad=True)
-b = torch.zeros(1, requires_grad=True)
+# פיצול המידע לtest ו- train
+generator1 = torch.Generator().manual_seed(495)
+train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_split, 1-train_split], )
+# train_dataset[:][0] the features || train_dataset[:][1] the labels
 
 model = SoftmaxClassifier(num_of_features, num_of_classes)
 
-criterion = nn.CrossEntropyLoss()
+loss_fn = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.0001)
 
 for epoch in range(num_epochs):
     optimizer.zero_grad()
-    probabilities = model(distances_3d_t)
+    logits = model(train_dataset[:][0])
 
-    # nll = torch.sum(-labels_t * torch.log(probabilities))
-    loss = torch.mean(-labels_indexed * torch.log(probabilities))
+    loss = loss_fn(logits, train_dataset[:][1])
     loss.backward()
 
     optimizer.step()
+    if epoch % 1000 == 0:
+        print(f'Epoch {epoch}.')
+with torch.no_grad():
+    test_logits = model(test_dataset[:][0])
+    loss = loss_fn(test_logits, test_dataset[:][1])
+    print(f"this is the loss of test: {loss.item()}")
