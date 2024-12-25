@@ -45,9 +45,11 @@ num_epochs = 10000
 train_split = 0.8
 learning_rate = 0.0001
 seed_number = 495
+run_seeded = True
 # end of constants
 
-torch.manual_seed(seed_number)
+if run_seeded:
+    torch.manual_seed(seed_number)
 
 # הבאת המידע מאקסל ואיחוד פיצ'רים
 distances_3d = pd.read_csv('data/3d_distances.csv', skip_blank_lines=True)
@@ -57,7 +59,6 @@ labels = pd.read_csv('data/labels.csv', skip_blank_lines=True)
 
 data = distances_3d.join(angles.set_index('pose_id'), on='pose_id', how='left')
 data = data.join(xyz_distances.set_index('pose_id'), on='pose_id', how='left')
-
 
 # עיבוד מידע להתאים ללמידה
 data = data.drop('pose_id', axis=1)
@@ -72,8 +73,9 @@ num_of_features = data.columns.size
 
 # פיצול המידע לtest ו- train
 generator1 = torch.Generator()
-generator1.manual_seed(seed_number)
-train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_split, 1-train_split], )
+if run_seeded:
+    generator1.manual_seed(seed_number)
+train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_split, 1 - train_split], )
 # train_dataset[:][0] the features || train_dataset[:][1] the labels
 
 model = SoftmaxClassifier(num_of_features, num_of_classes)
@@ -91,7 +93,6 @@ for epoch in range(num_epochs):
     optimizer.step()
     if epoch % 1000 == 0:
         print(f'Epoch {epoch}.')
-
 
 # getting results
 with torch.no_grad():
