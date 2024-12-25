@@ -44,7 +44,10 @@ num_of_classes = 10
 num_epochs = 10000
 train_split = 0.8
 learning_rate = 0.0001
+seed_number = 495
 # end of constants
+
+torch.manual_seed(seed_number)
 
 # הבאת המידע מאקסל ואיחוד פיצ'רים
 distances_3d = pd.read_csv('data/3d_distances.csv', skip_blank_lines=True)
@@ -69,7 +72,7 @@ num_of_features = data.columns.size
 
 # פיצול המידע לtest ו- train
 generator1 = torch.Generator()
-generator1.manual_seed(495)
+generator1.manual_seed(seed_number)
 train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_split, 1-train_split], )
 # train_dataset[:][0] the features || train_dataset[:][1] the labels
 
