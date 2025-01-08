@@ -4,7 +4,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torcheval.metrics.functional import multiclass_f1_score
+from torcheval.metrics.functional import multiclass_f1_score, multiclass_accuracy
 
 # defines and classes
 
@@ -72,19 +72,19 @@ class SoftmaxClassifier(nn.Module):
         # my_probabilities = self.softmax(logits)  # Apply softmax to logits
         return logits
 
+
 # end of defines and classes
 
 
 # constants- המשתנים אשר משנים את איך המודל ירוץ
 num_of_classes = 10
-num_epochs = 1000
+num_epochs = 20000
 train_part = 0.8
 test_part = 0.2
-learning_rate = 0.001
+learning_rate = 0.0001
 seed_number = 495
 run_seeded = True
 n_rounding = 5  # number rounding to the nth zero
-
 
 # end of constants
 
@@ -98,6 +98,8 @@ xyz_distances = pd.read_csv('data/xyz_distances.csv', skip_blank_lines=True)
 landmarks = pd.read_csv('data/landmarks.csv', skip_blank_lines=True)
 labels = pd.read_csv('data/labels.csv', skip_blank_lines=True)
 
+features_entered = ",".join(["", "angle", "xyz", "landmarks"])
+
 # איחוד מידע של הפיצ'רים לאוסף אחד
 # data = distances_3d
 # # data = angles
@@ -106,10 +108,10 @@ labels = pd.read_csv('data/labels.csv', skip_blank_lines=True)
 # data = data.join(landmarks.set_index('pose_id'), on='pose_id', how='left')
 
 features = pd.concat([
-    distances_3d.iloc[:, 1:],  # 3D distances
-    angles.iloc[:, 1:],       # Angles
+    # distances_3d.iloc[:, 1:],  # 3D distances
+    angles.iloc[:, 1:],  # Angles
     xyz_distances.iloc[:, 1:],  # Per-axis distances
-    landmarks.iloc[:, 1:]     # Raw coordinates
+    landmarks.iloc[:, 1:]  # Raw coordinates
 ], axis=1)
 
 data = features
@@ -153,16 +155,13 @@ for epoch in range(num_epochs):
 
 # בחינת המודל והדפסת תוצאות
 with torch.no_grad():
-
     targets = torch.argmax(test_dataset[:][1], dim=1)
     test_logits = model(test_dataset[:][0])
     test_loss = loss_fn(test_logits, test_dataset[:][1])
 
-    ans = torch.argmax(test_logits, dim=1)
-    corrects = (ans == targets)
-    f1_score = multiclass_f1_score(targets,ans,average='weighted',num_classes=num_of_classes)
+    f1_score = multiclass_f1_score(input=test_logits, target=targets, average='weighted', num_classes=num_of_classes)
 
-    accuracy = corrects.sum().float() / float(targets.size(0))
+    accuracy = multiclass_accuracy(input=test_logits, target=targets, num_classes=num_of_classes)
     train_loss_num = round(train_loss.item(), n_rounding)
     test_loss_num = round(test_loss.item(), n_rounding)
     accuracy_num = round(accuracy.item(), n_rounding)
@@ -176,7 +175,7 @@ with torch.no_grad():
 
     # הדפסת מידע על ההרצה עצמה. נועד בשביל השוואת פרמטרים של המודל.
     print(f"{f1_score_num}\t{round(accuracy_num, n_rounding)}\t{test_loss_num}\t", end="")
-    print(f"{train_loss_num}\t{learning_rate}\t{num_epochs}\t{num_of_features}")
+    print(f"{train_loss_num}\t{learning_rate}\t{num_epochs}\t{num_of_features}\t{features_entered}")
 
 # data clearing
 # del optimizer, loss_fn, curr_loss, test_logits, test_dataset, train_dataset, model, targets
