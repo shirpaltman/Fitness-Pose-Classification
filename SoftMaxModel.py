@@ -4,6 +4,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torcheval.metrics.functional import multiclass_f1_score
 
 # defines and classes
 
@@ -44,8 +45,6 @@ def get_label(label_id):
     return 'Undefined'
 
 
-
-
 # determine the supported device
 def get_device():
     if torch.cuda.is_available():
@@ -78,10 +77,10 @@ class SoftmaxClassifier(nn.Module):
 
 # constants- המשתנים אשר משנים את איך המודל ירוץ
 num_of_classes = 10
-num_epochs = 100000
+num_epochs = 50000
 train_part = 0.8
 test_part = 0.2
-learning_rate = 0.0001
+learning_rate = 0.001
 seed_number = 495
 run_seeded = True
 n_rounding = 5  # number rounding to the nth zero
@@ -152,19 +151,23 @@ with torch.no_grad():
 
     ans = torch.argmax(test_logits, dim=1)
     corrects = (ans == targets)
+    f1_score = multiclass_f1_score(targets,ans,average='weighted',num_classes=10)
 
     accuracy = corrects.sum().float() / float(targets.size(0))
-    loss_num = test_loss.item()
-    accuracy_num = accuracy.item()
+    train_loss_num = round(train_loss.item(), n_rounding)
+    test_loss_num = round(test_loss.item(), n_rounding)
+    accuracy_num = round(accuracy.item(), n_rounding)
+    f1_score_num = round(f1_score.item(), n_rounding)
 
     # הדפסת תוצאות של מודל
-    print(f"this is the training data loss of test: {round(train_loss.item(), n_rounding)}")
-    print(f"this is the test loss of test: {round(test_loss.item(), n_rounding)}")
-    print(f"this is the accuracy of test: {round(accuracy.item(), n_rounding)}")
+    print(f"this is the training data loss of test: {train_loss_num}")
+    print(f"this is the test loss of test: {test_loss_num}")
+    print(f"this is the accuracy of test: {accuracy_num}")
+    print(f"this is the f1_score of test: {f1_score_num}")
 
     # הדפסת מידע על ההרצה עצמה. נועד בשביל השוואת פרמטרים של המודל.
-    print(f"{round(accuracy.item(), n_rounding)}\t{round(test_loss.item(), n_rounding)}\t", end="")
-    print(f"{round(train_loss.item(), n_rounding)}\t{learning_rate}\t{num_epochs}\t{num_of_features}")
+    print(f"{f1_score_num}\t{round(accuracy_num, n_rounding)}\t{test_loss_num}\t", end="")
+    print(f"{train_loss_num}\t{learning_rate}\t{num_epochs}\t{num_of_features}")
 
 # data clearing
 # del optimizer, loss_fn, curr_loss, test_logits, test_dataset, train_dataset, model, targets
