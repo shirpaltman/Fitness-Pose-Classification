@@ -9,16 +9,16 @@ from torcheval.metrics.functional import multiclass_f1_score
 # defines and classes
 
 _labels = [
-    ('jumping_jacks_down', 1),
-    ('jumping_jacks_up', 2),
-    ('pullups_down', 3),
-    ('pullups_up', 4),
-    ('pushups_down', 5),
-    ('pushups_up', 6),
-    ('situp_down', 7),
-    ('situp_up', 8),
-    ('squats_down', 9),
-    ('squats_up', 10)
+    ('jumping_jacks_down', 0),
+    ('jumping_jacks_up', 1),
+    ('pullups_down', 2),
+    ('pullups_up', 3),
+    ('pushups_down', 4),
+    ('pushups_up', 5),
+    ('situp_down', 6),
+    ('situp_up', 7),
+    ('squats_down', 8),
+    ('squats_up', 9)
 ]
 
 
@@ -29,7 +29,7 @@ def create_label_tensor(num_of_labels, df: pd.DataFrame, df_column):
     df[df_column] = pd.to_numeric(df[df_column])
     for indexed_label in df[df_column]:
         temp = torch.zeros(1, num_of_labels)
-        temp[0][indexed_label - 1] = 1
+        temp[0][indexed_label] = 1
         if result is None:
             result = temp
         else:
@@ -77,7 +77,7 @@ class SoftmaxClassifier(nn.Module):
 
 # constants- המשתנים אשר משנים את איך המודל ירוץ
 num_of_classes = 10
-num_epochs = 50000
+num_epochs = 1000
 train_part = 0.8
 test_part = 0.2
 learning_rate = 0.001
@@ -100,13 +100,22 @@ labels = pd.read_csv('data/labels.csv', skip_blank_lines=True)
 
 # איחוד מידע של הפיצ'רים לאוסף אחד
 # data = distances_3d
-data = angles
+# # data = angles
 # data = data.join(angles.set_index('pose_id'), on='pose_id', how='left')
-data = data.join(xyz_distances.set_index('pose_id'), on='pose_id', how='left')
-data = data.join(landmarks.set_index('pose_id'), on='pose_id', how='left')
+# data = data.join(xyz_distances.set_index('pose_id'), on='pose_id', how='left')
+# data = data.join(landmarks.set_index('pose_id'), on='pose_id', how='left')
+
+features = pd.concat([
+    distances_3d.iloc[:, 1:],  # 3D distances
+    angles.iloc[:, 1:],       # Angles
+    xyz_distances.iloc[:, 1:],  # Per-axis distances
+    landmarks.iloc[:, 1:]     # Raw coordinates
+], axis=1)
+
+data = features
 
 # עיבוד מידע להתאים ללמידת סופטמקס
-data = data.drop('pose_id', axis=1)
+# data = data.drop('pose_id', axis=1)
 labels = labels.drop('pose_id', axis=1)
 labels_tensor = create_label_tensor(num_of_classes, labels, 'pose')
 data_tensor = df_to_tensor(data)
@@ -151,7 +160,7 @@ with torch.no_grad():
 
     ans = torch.argmax(test_logits, dim=1)
     corrects = (ans == targets)
-    f1_score = multiclass_f1_score(targets,ans,average='weighted',num_classes=10)
+    f1_score = multiclass_f1_score(targets,ans,average='weighted',num_classes=num_of_classes)
 
     accuracy = corrects.sum().float() / float(targets.size(0))
     train_loss_num = round(train_loss.item(), n_rounding)
