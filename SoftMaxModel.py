@@ -75,16 +75,17 @@ class SoftmaxClassifier(nn.Module):
 
 # end of defines and classes
 
-
-# constants- המשתנים אשר משנים את איך המודל ירוץ
+# constants- משתנים עקביים
 num_of_classes = 10
-num_epochs = 20000
+n_rounding = 5  # number rounding to the nth zero
+seed_number = 495
+run_seeded = True
+
+# model params- המשתנים אשר משנים את איך המודל ירוץ
+num_epochs = 10000
 train_part = 0.8
 test_part = 0.2
 learning_rate = 0.0001
-seed_number = 495
-run_seeded = True
-n_rounding = 5  # number rounding to the nth zero
 
 # end of constants
 
@@ -98,17 +99,11 @@ xyz_distances = pd.read_csv('data/xyz_distances.csv', skip_blank_lines=True)
 landmarks = pd.read_csv('data/landmarks.csv', skip_blank_lines=True)
 labels = pd.read_csv('data/labels.csv', skip_blank_lines=True)
 
-features_entered = ",".join(["", "angle", "xyz", "landmarks"])
+features_entered = ",".join(["3d", "angle", "xyz", "landmarks"])
 
 # איחוד מידע של הפיצ'רים לאוסף אחד
-# data = distances_3d
-# # data = angles
-# data = data.join(angles.set_index('pose_id'), on='pose_id', how='left')
-# data = data.join(xyz_distances.set_index('pose_id'), on='pose_id', how='left')
-# data = data.join(landmarks.set_index('pose_id'), on='pose_id', how='left')
-
 features = pd.concat([
-    # distances_3d.iloc[:, 1:],  # 3D distances
+    distances_3d.iloc[:, 1:],  # 3D distances
     angles.iloc[:, 1:],  # Angles
     xyz_distances.iloc[:, 1:],  # Per-axis distances
     landmarks.iloc[:, 1:]  # Raw coordinates
@@ -157,11 +152,11 @@ for epoch in range(num_epochs):
 with torch.no_grad():
     targets = torch.argmax(test_dataset[:][1], dim=1)
     test_logits = model(test_dataset[:][0])
+
     test_loss = loss_fn(test_logits, test_dataset[:][1])
-
     f1_score = multiclass_f1_score(input=test_logits, target=targets, average='weighted', num_classes=num_of_classes)
-
     accuracy = multiclass_accuracy(input=test_logits, target=targets, num_classes=num_of_classes)
+
     train_loss_num = round(train_loss.item(), n_rounding)
     test_loss_num = round(test_loss.item(), n_rounding)
     accuracy_num = round(accuracy.item(), n_rounding)
