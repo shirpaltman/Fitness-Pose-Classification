@@ -6,6 +6,7 @@ from sklearn.metrics import classification_report, f1_score
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, Dropout, Input
 from tensorflow.keras.callbacks import EarlyStopping
+import matplotlib.pyplot as plt
 
 # Load datasets
 file_paths = {
@@ -37,8 +38,8 @@ label_encoder = LabelEncoder()
 y_encoded = label_encoder.fit_transform(y)
 
 # Split data into train (70%), validation (15%), and test (15%)
-X_train, X_temp, y_train, y_temp = train_test_split(X, y_encoded, test_size=0.3, random_state=42)
-X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+X_train, X_temp, y_train, y_temp = train_test_split(X, y_encoded, test_size=0.25, random_state=42)
+X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.6, random_state=42)
 
 # Standardize the features
 scaler = StandardScaler()
@@ -60,20 +61,20 @@ model = Sequential([
     MaxPooling1D(pool_size=2, padding='same'),
     Flatten(),
     Dense(128, activation='relu'),
-    Dropout(0.5),
+    Dropout(0.6),
     Dense(len(label_encoder.classes_), activation='softmax')  # Output layer
 ])
 
 model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
 # Early stopping callback
-early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+early_stopping = EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)
 
 # Train the CNN model
 history = model.fit(
     X_train_cnn, y_train,
     validation_data=(X_val_cnn, y_val),
-    epochs=20, batch_size=16,
+    epochs=100, batch_size=None,
     callbacks=[early_stopping]
 )
 
@@ -86,3 +87,27 @@ test_report = classification_report(y_test, y_test_pred, target_names=label_enco
 print(f"F1 Score (Test Set): {test_f1_score}")
 print("\nClassification Report (Test Set):\n")
 print(test_report)
+
+plt.figure(figsize=(12, 6))
+
+# Loss plot
+plt.subplot(1, 2, 1)
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.title('Training & Validation Loss')
+plt.legend()
+
+# Accuracy plot
+plt.subplot(1, 2, 2)
+plt.plot(history.history['accuracy'], label='Training Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.title('Training & Validation Accuracy')
+plt.legend()
+
+# Show the plot
+plt.tight_layout()
+plt.show()

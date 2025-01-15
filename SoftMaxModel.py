@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torcheval.metrics.functional import multiclass_f1_score, multiclass_accuracy
+import matplotlib.pyplot as plt
 
 # defines and classes
 
@@ -82,9 +83,10 @@ seed_number = 495
 run_seeded = True
 
 # model params- המשתנים אשר משנים את איך המודל ירוץ
-num_epochs = 500
-train_part = 0.8
-test_part = 0.2
+num_epochs = 1250
+train_part = 0.75
+val_part = 0.1
+test_part = 0.15
 learning_rate = 0.0001
 
 # end of constants
@@ -129,7 +131,9 @@ else:
     generator1 = torch.default_generator
 
 # חלוקת המידע ל-train & test
-train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_part, test_part], generator=generator1)
+train_dataset, validation_dataset, test_dataset = torch.utils.data.random_split(dataset,
+                                                                                [train_part, val_part, test_part],
+                                                                                generator=generator1)
 
 model = SoftmaxClassifier(num_of_features, num_of_classes)
 loss_fn = nn.CrossEntropyLoss()
@@ -137,14 +141,35 @@ optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
 # אימון מודל
 train_loss = torch.tensor(0.)
+train_losses = []
+train_accuracies = []
+val_losses = []
+val_accuracies = []
+
 for epoch in range(num_epochs):
+    model.train()
     optimizer.zero_grad()
     logits = model(train_dataset[:][0])
 
     train_loss = loss_fn(logits, train_dataset[:][1])
+    train_targets = torch.argmax(train_dataset[:][1], dim=1)
+    train_accuracy = multiclass_accuracy(input=logits, target=train_targets)
     train_loss.backward()
 
     optimizer.step()
+
+    train_losses.append(train_loss.item())
+    train_accuracies.append(train_accuracy.item())
+
+    model.eval()
+    with torch.no_grad():
+        logits = model(validation_dataset[:][0])
+        val_loss = loss_fn(logits, validation_dataset[:][1])
+        val_losses.append(val_loss.item())
+
+        val_targets = torch.argmax(validation_dataset[:][1], dim=1)
+        val_accuracy = multiclass_accuracy(target=val_targets, input=logits)
+        val_accuracies.append(val_accuracy.item())
     # if epoch % 1000 == 0:
     #     print(f'Epoch {epoch}.')
 
@@ -172,6 +197,28 @@ with torch.no_grad():
     print(f"{f1_score_num}\t{round(accuracy_num, n_rounding)}\t{test_loss_num}\t", end="")
     print(f"{train_loss_num}\t{learning_rate}\t{num_epochs}\t{num_of_features}\t{features_entered}")
 
+plt.figure(figsize=(12, 6))
+
+# Loss plot
+plt.subplot(1, 2, 1)
+plt.plot(train_losses, label='Training Loss')
+plt.plot(val_losses, label='Validation Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.title('Training and Validation Loss')
+plt.legend()
+
+# Accuracy plot
+plt.subplot(1, 2, 2)
+plt.plot(train_accuracies, label='Training Accuracy')
+plt.plot(val_accuracies, label='Validation Accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.title('Validation Accuracy')
+plt.legend()
+
+# plt.tight_layout()
+plt.show()
 # data clearing
 # del optimizer, loss_fn, curr_loss, test_logits, test_dataset, train_dataset, model, targets
 # del ans, corrects, accuracy
