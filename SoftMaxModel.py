@@ -82,7 +82,7 @@ seed_number = 495
 run_seeded = True
 
 # model params- המשתנים אשר משנים את איך המודל ירוץ
-num_epochs = 10000
+num_epochs = 500
 train_part = 0.8
 test_part = 0.2
 learning_rate = 0.0001
@@ -103,7 +103,7 @@ features_entered = ",".join(["3d", "angle", "xyz", "landmarks"])
 
 # איחוד מידע של הפיצ'רים לאוסף אחד
 features = pd.concat([
-    distances_3d.iloc[:, 1:],  # 3D distances
+    # distances_3d.iloc[:, 1:],  # 3D distances
     angles.iloc[:, 1:],  # Angles
     xyz_distances.iloc[:, 1:],  # Per-axis distances
     landmarks.iloc[:, 1:]  # Raw coordinates
