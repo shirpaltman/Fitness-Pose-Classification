@@ -65,10 +65,14 @@ def df_to_tensor(df):
 class SoftmaxClassifier(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(SoftmaxClassifier, self).__init__()
-        self.linear = nn.Linear(input_dim, output_dim)  # Single linear layer
+        self.hidden1 = nn.Linear(input_dim, 100)
+        self.hidden2 = nn.Linear(100, 50)
+        self.linear = nn.Linear(50, output_dim)  # Single linear layer
         self.softmax = nn.Softmax(dim=1)  # Apply softmax along class dimension
 
     def forward(self, x):
+        x = torch.relu(self.hidden1(x))
+        x = torch.relu(self.hidden2(x))
         logits = self.linear(x)
         # my_probabilities = self.softmax(logits)  # Apply softmax to logits
         return logits
@@ -83,11 +87,11 @@ seed_number = 495
 run_seeded = True
 
 # model params- המשתנים אשר משנים את איך המודל ירוץ
-num_epochs = 1250
+num_epochs = 250
 train_part = 0.7
 val_part = 0.15
 test_part = 0.15
-learning_rate = 0.0002
+learning_rate = 0.0025
 
 # end of constants
 
@@ -152,13 +156,14 @@ for epoch in range(num_epochs):
     logits = model(train_dataset[:][0])
 
     train_loss = loss_fn(logits, train_dataset[:][1])
-    train_targets = torch.argmax(train_dataset[:][1], dim=1)
-    train_accuracy = multiclass_accuracy(input=logits, target=train_targets)
     train_loss.backward()
 
     optimizer.step()
 
     train_losses.append(train_loss.item())
+
+    train_targets = torch.argmax(train_dataset[:][1], dim=1)
+    train_accuracy = multiclass_accuracy(input=logits, target=train_targets)
     train_accuracies.append(train_accuracy.item())
 
     model.eval()
